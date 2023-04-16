@@ -32,6 +32,7 @@ def plot_PCA(data: np.ndarray[Any, Any]) -> None:
     plt.close()
 
 def main() -> None:
+    # Read and preprocess data
     data = pd.read_csv(DATA_PATH, index_col="idx")
 
     X_r_path = Path(COMPRESSED_DATA_DIR)/"X_r.npz"
@@ -65,7 +66,9 @@ def main() -> None:
 
     ea_df = pd.DataFrame(np.vstack([Y_fwd, Y_rev]).T, 
                          columns=["forward", "reverse"])
- 
+    
+    # Correlation between activation energy of forward
+    # and reverse reactions
     g = sns.displot(data=ea_df, x="forward", y="reverse",
                 rug=True, height=6, aspect=8/6)
     g.set_xlabels(size=12)
@@ -75,9 +78,10 @@ def main() -> None:
     plt.title("Activation energy of forward versus reverse reactions",
               fontsize="x-large")
     plt.show()
-
-    # plot_PCA(X_fwd)
-    # plot_PCA(X_rev)
+    
+    # Compare features of forward against backward reactions
+    plot_PCA(X_fwd)
+    plot_PCA(X_rev)
 
 if __name__=="__main__":
     main()

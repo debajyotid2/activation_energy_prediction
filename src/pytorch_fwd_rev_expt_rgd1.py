@@ -12,9 +12,8 @@ import pandas as pd
 import torch
 import pytorch_lightning as pl
 
-from grambow_dataset import pytorch_dataset
+from rgd1_dataset import pytorch_dataset
 from model.model import MLPRegressor
-
 
 NUM_LAYERS = 2
 NUM_NODES_PER_LAYER = 200
@@ -30,7 +29,7 @@ BATCH_SIZE = 32
 # Adjust number of workers depending on the number 
 # of CPU cores in your machine.
 
-NUM_WORKERS = 0
+NUM_WORKERS = 8
 
 # Percentage of the whole dataset utilized
 
@@ -39,8 +38,6 @@ DATASET_FRAC = 1.0
 # Data is split as : Test = Test frac; (Train+Val) = (1-Test frac)
 #                  : Val = Val frac * (1-Test frac)
 #                  : Train = (1-Val frac) * (1-Test frac)
-# IMPORTANT: Before changing TEST_FRAC, please delete all
-# npz files from data/compressed.
 
 VAL_FRAC = 0.1      
 TEST_FRAC = 0.2
@@ -63,18 +60,18 @@ def main() -> None:
     start_time = time.perf_counter()
     logging.info("Loading data...")
     train_loader, val_loader, test_loader = \
-            pytorch_dataset.load_dataloaders_2(
-                            data_dirpath=data_dir,
+            pytorch_dataset.load_dataloaders(
+                            download_dirpath=data_dir,
                             radius=RADIUS,
                             n_bits=N_BITS,
                             batch_size=BATCH_SIZE,
                             val_frac=VAL_FRAC,
                             test_frac=TEST_FRAC,
                             num_workers=NUM_WORKERS,
-                            dataset_frac=dataset_frac,
                             seed=SEED
                         )
-    logging.info(f"Loaded data in {time.perf_counter()-start_time:.3f} seconds.")
+    logging.info(
+        f"Loaded data in {time.perf_counter()-start_time:.3f} seconds.")
 
     start_time = time.perf_counter()
     model = MLPRegressor(

@@ -166,11 +166,14 @@ def load_data_1(data_path: Path,
         # generating input features for test data
         # from canonical SMILES without reverse reaction data
         X_test = X_reactant_test - X_product_test
-        delta_h_test = X_dh_test[:, np.newaxis]
+        delta_h_test = X_dh_test.values.reshape(-1, 1)
         X_test = np.hstack([X_test, delta_h_test])
 
         # compress to npz
         data_to_compress = [X_train, Y_train, X_test, Y_test]
+
+        # create compressed data dir if it does not exist
+        compressed_data_paths[0].parent.mkdir(exist_ok=True, parents=True)
 
         for data, path in zip(data_to_compress, compressed_data_paths):
             npz_ops.compress_to_npz(data, path)
@@ -242,6 +245,9 @@ def load_data_2(data_path: Path,
 
         # compress to npz
         data_to_compress = [X_train, Y_train, X_test, Y_test]
+
+        # create compressed data dir if it does not exist
+        compressed_data_paths[0].parent.mkdir(exist_ok=True, parents=True)
 
         for data, path in zip(data_to_compress, compressed_data_paths):
             npz_ops.compress_to_npz(data, path)

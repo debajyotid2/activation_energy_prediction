@@ -6,3 +6,10 @@
 - use $\Delta$ H directly without normalization
 
 2 x 2 -> 4 runs
+
+# Notes from Grambow's paper on the dataset
+
+- reactions in the dataset consist of at most seven heavy atoms (C, N, O)
+- for a single reactant chosen, a reaction network was grown around it.
+- the dataset can be considered to comprise of a handful of reaction networks
+

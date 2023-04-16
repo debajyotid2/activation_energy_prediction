@@ -2,6 +2,7 @@
 torch.utils.data.Dataset and torch.utils.data.DataLoader for the Grambow dataset.
 """
 import os
+import logging
 
 from pathlib import Path
 from typing import Any, Callable
@@ -16,6 +17,9 @@ LoadingFunc = Callable[[Path, int, int, float, int],\
                               np.ndarray[Any, Any],
                               np.ndarray[Any, Any],
                               np.ndarray[Any, Any]]]
+
+logging.basicConfig(format="%(asctime)s-%(levelname)s: %(message)s",
+                    level=logging.DEBUG)
 
 class GrambowDataset(torch.utils.data.Dataset):
     """
@@ -126,6 +130,8 @@ def load_dataloaders_1(
                 batch_size=batch_size,
                 shuffle=False,
                 num_workers=num_workers)
+
+    logging.info(f"Train points: {len(train_idxs)}, validation points: {len(val_idxs)}, test points: {len(test_ds)}.")
     return train_dataloader, val_dataloader, test_dataloader
 
 def load_dataloaders_2(
@@ -195,5 +201,7 @@ def load_dataloaders_2(
                 batch_size=batch_size,
                 shuffle=False,
                 num_workers=num_workers)
+
+    logging.info(f"Train points: {len(train_idxs)}, validation points: {len(val_idxs)}, test points: {len(test_ds)}.")
     return train_dataloader, val_dataloader, test_dataloader
 
