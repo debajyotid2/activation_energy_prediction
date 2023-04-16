@@ -7,7 +7,7 @@ import urllib.request
 import re
 import tarfile
 
-logging.basicConfig(format="%(asctime)s-%(levelname)s-%(thread)d : %(message)s",
+logging.basicConfig(format="%(asctime)s-%(levelname)s : %(message)s",
                     level=logging.DEBUG)
 
 DATA_URLS = [
