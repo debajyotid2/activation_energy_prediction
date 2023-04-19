@@ -12,7 +12,8 @@ def get_morgan_fingerprint(smile: str, radius: int = 2, n_bits: int = 2048) -> n
     Generates Morgan fingerprint from SMILE string.
     """
     mol = rdkit.Chem.MolFromSmiles(smile)
-    fingerprint = rdkit.Chem.rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, radius=radius, nBits=n_bits)
+    fingerprint = rdkit.Chem.rdMolDescriptors.GetMorganFingerprintAsBitVect(
+            mol, radius=radius, nBits=n_bits)
     return np.asarray(fingerprint, dtype=np.float32)
 
 def convert_to_canonical(smile: str) -> str:

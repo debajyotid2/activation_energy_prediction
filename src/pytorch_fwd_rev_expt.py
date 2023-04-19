@@ -12,9 +12,8 @@ import pandas as pd
 import torch
 import pytorch_lightning as pl
 
-from grambow_dataset import pytorch_dataset
+from grambow_dataset import grambow, pytorch_dataset
 from model.model import MLPRegressor
-
 
 NUM_LAYERS = 2
 NUM_NODES_PER_LAYER = 200
@@ -63,7 +62,7 @@ def main() -> None:
     start_time = time.perf_counter()
     logging.info("Loading data...")
     train_loader, val_loader, test_loader = \
-            pytorch_dataset.load_dataloaders_2(
+            pytorch_dataset.load_dataloaders_scaffold_split(
                             data_dirpath=data_dir,
                             radius=RADIUS,
                             n_bits=N_BITS,
@@ -72,7 +71,6 @@ def main() -> None:
                             test_frac=TEST_FRAC,
                             num_workers=NUM_WORKERS,
                             dataset_frac=dataset_frac,
-                            seed=SEED
                         )
     logging.info(f"Loaded data in {time.perf_counter()-start_time:.3f} seconds.")
 

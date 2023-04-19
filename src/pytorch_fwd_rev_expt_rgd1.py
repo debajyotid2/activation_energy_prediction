@@ -60,15 +60,14 @@ def main() -> None:
     start_time = time.perf_counter()
     logging.info("Loading data...")
     train_loader, val_loader, test_loader = \
-            pytorch_dataset.load_dataloaders(
+            pytorch_dataset.load_dataloaders_scaffold_split(
                             download_dirpath=data_dir,
                             radius=RADIUS,
                             n_bits=N_BITS,
                             batch_size=BATCH_SIZE,
                             val_frac=VAL_FRAC,
                             test_frac=TEST_FRAC,
-                            num_workers=NUM_WORKERS,
-                            seed=SEED
+                            num_workers=NUM_WORKERS
                         )
     logging.info(
         f"Loaded data in {time.perf_counter()-start_time:.3f} seconds.")

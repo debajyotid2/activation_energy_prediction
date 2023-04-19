@@ -13,29 +13,11 @@ sys.path.insert(0, str(Path(__file__).parents[1].resolve()))
 import numpy as np
 import pandas as pd
 
-from helpers import preprocessing
-from helpers import npz_ops
+from helpers import dataset, npz_ops, preprocessing
 
 logging.basicConfig(
         format="%(asctime)s-%(levelname)s: %(message)s",
         level=logging.INFO)
-
-def generate_train_test_split_idxs(idxs: np.ndarray[Any, Any],
-                                   test_frac: float,
-                                   seed: int) -> \
-                                    tuple[np.ndarray[Any, Any],
-                                          np.ndarray[Any, Any]]:
-    """
-    Given a set of indices of data points, randomly splits indices
-    into (test_frac * 100)% test indices and remaining training indices.
-    """
-    np.random.seed(seed)
-
-    test_size = int(test_frac * idxs.shape[0])
-    train_size = idxs.shape[0] - test_size
-    perm_idxs = np.random.permutation(idxs)
-    return perm_idxs[:train_size], perm_idxs[train_size:]
-
 
 def generate_reverse_rxn_data(X_reactant: np.ndarray[Any, Any],
                               X_product: np.ndarray[Any, Any],
@@ -48,13 +30,17 @@ def generate_reverse_rxn_data(X_reactant: np.ndarray[Any, Any],
     for reactants and products in forward reactions, generates combined
     features and targets for corresponding reverse reactions.
     """
-    X_diff = X_reactant - X_product
+    X_diff = X_product - X_reactant
     Y = np.hstack([Y, Y-delta_h])
     delta_h = np.hstack([delta_h, -delta_h])
     X_diff = np.vstack([X_diff, -X_diff])
     X = np.hstack([X_diff, delta_h[:, np.newaxis]])
 
-    return X, Y
+    rng = np.random.default_rng()
+    idxs = np.arange(X.shape[0])
+    rng.shuffle(idxs)
+
+    return X[idxs], Y[idxs]
 
 def generate_features(data: pd.DataFrame, radius: int, n_bits: int) -> \
                    tuple[np.ndarray[Any, Any], np.ndarray[Any, Any]]:
@@ -109,7 +95,98 @@ def preprocess_data(data: pd.DataFrame,
 
     return X_reactant, X_product, X_dh, Y
 
-def load_data_1(data_path: Path, 
+def load_data_scaffold_split(
+              data_path: Path, 
+              radius: int,
+              n_bits: int,
+              val_frac: float = 0.1,
+              test_frac: float = 0.2)\
+       -> tuple[np.ndarray[Any, Any],
+                np.ndarray[Any, Any],
+                np.ndarray[Any, Any],
+                np.ndarray[Any, Any],
+                np.ndarray[Any, Any],
+                np.ndarray[Any, Any]]:
+    """
+    Load and preprocess training and test data from the Grambow dataset.
+    This function generates data that has both forward and backward 
+    reactions. A scaffold split of data based on reactant molecules
+    is used.
+    """
+
+    compressed_train_features_path =  data_path.parent / "compressed" / "b97d3_scaffold_X_train.npz"
+    compressed_train_targets_path = data_path.parent / "compressed" / "b97d3_scaffold_Y_train.npz"
+    compressed_val_features_path =  data_path.parent / "compressed" / "b97d3_scaffold_X_val.npz"
+    compressed_val_targets_path = data_path.parent / "compressed" / "b97d3_scaffold_Y_val.npz"
+    compressed_test_features_path = data_path.parent / "compressed" / "b97d3_scaffold_X_test.npz"
+    compressed_test_targets_path = data_path.parent / "compressed" / "b97d3_scaffold_Y_test.npz"
+
+    compressed_data_paths = [compressed_train_features_path,
+                             compressed_train_targets_path,
+                             compressed_val_features_path,
+                             compressed_val_targets_path,
+                             compressed_test_features_path,
+                             compressed_test_targets_path]
+
+    if not all([path.exists() for path in compressed_data_paths]):
+        data = pd.read_csv(data_path, index_col="idx")
+        logging.info(f"Read in data from {data_path}.")
+
+        train_idxs, val_idxs, test_idxs = \
+                dataset.generate_scaffold_split_idxs(
+                                data["rsmi"],
+                                val_frac=val_frac,
+                                test_frac=test_frac)
+        train_data = data.loc[train_idxs, :]
+        val_data = data.loc[val_idxs, :]
+        test_data = data.loc[test_idxs, :]
+
+        X_reactant_train, X_product_train, X_dh_train, Y_train = \
+                preprocess_data(train_data, 
+                                radius=radius,
+                                n_bits=n_bits)
+        X_reactant_val, X_product_val, X_dh_val, Y_val = \
+                preprocess_data(val_data, 
+                                radius=radius,
+                                n_bits=n_bits)
+        X_reactant_test, X_product_test, X_dh_test, Y_test = \
+                preprocess_data(test_data, 
+                                radius=radius,
+                                n_bits=n_bits)
+
+        # generating data for reverse reactions
+        X_train, Y_train = generate_reverse_rxn_data(
+                                     X_reactant=X_reactant_train,
+                                     X_product=X_product_train,
+                                     Y=Y_train,
+                                     delta_h=X_dh_train)
+        X_val, Y_val = generate_reverse_rxn_data(
+                                     X_reactant=X_reactant_val,
+                                     X_product=X_product_val,
+                                     Y=Y_val,
+                                     delta_h=X_dh_val)
+        X_test, Y_test = generate_reverse_rxn_data(
+                                     X_reactant=X_reactant_test,
+                                     X_product=X_product_test,
+                                     Y=Y_test,
+                                     delta_h=X_dh_test)
+
+        # compress to npz
+        data_to_compress = [X_train, Y_train, X_val, Y_val, X_test, Y_test]
+
+        # create compressed data dir if it does not exist
+        compressed_data_paths[0].parent.mkdir(exist_ok=True, parents=True)
+
+        for data, path in zip(data_to_compress, compressed_data_paths):
+            npz_ops.compress_to_npz(data, path)
+
+    X_train, Y_train, X_val, Y_val, X_test, Y_test \
+            = list(map(npz_ops.load_from_npz, 
+                        compressed_data_paths))
+    return X_train, Y_train, X_val, Y_val, X_test, Y_test
+
+def load_data_random_split_1(
+              data_path: Path, 
               radius: int,
               n_bits: int,
               test_frac: float = 0.2,
@@ -138,14 +215,15 @@ def load_data_1(data_path: Path,
         data = pd.read_csv(data_path, index_col="idx")
         logging.info(f"Read in data from {data_path}.")
 
-        train_idxs, test_idxs = generate_train_test_split_idxs(
+        train_idxs, test_idxs = dataset.generate_train_test_split_idxs(
                                 data.index.values, 
                                 test_frac=test_frac,
                                 seed=seed)
         train_data = data.loc[train_idxs, :]
         test_data = data.loc[test_idxs, :]
 
-        logging.info(f"Split dataset into {train_data.shape[0]} train and {test_data.shape[0]} test data points.")
+        logging.info(f"Split dataset into {train_data.shape[0]} train"+
+        f" and {test_data.shape[0]} test data points.")
 
         X_reactant_train, X_product_train, X_dh_train, Y_train = \
                 preprocess_data(train_data, 
@@ -165,7 +243,7 @@ def load_data_1(data_path: Path,
 
         # generating input features for test data
         # from canonical SMILES without reverse reaction data
-        X_test = X_reactant_test - X_product_test
+        X_test = X_product_test - X_reactant_test
         delta_h_test = X_dh_test.values.reshape(-1, 1)
         X_test = np.hstack([X_test, delta_h_test])
 
@@ -182,7 +260,8 @@ def load_data_1(data_path: Path,
                                                 compressed_data_paths))
     return X_train, Y_train, X_test, Y_test
 
-def load_data_2(data_path: Path, 
+def load_data_random_split_2(
+              data_path: Path, 
               radius: int,
               n_bits: int,
               test_frac: float = 0.2,
@@ -211,14 +290,15 @@ def load_data_2(data_path: Path,
         data = pd.read_csv(data_path, index_col="idx")
         logging.info(f"Read in data from {data_path}.")
 
-        train_idxs, test_idxs = generate_train_test_split_idxs(
+        train_idxs, test_idxs = dataset.generate_train_test_split_idxs(
                                 data.index.values, 
                                 test_frac=test_frac,
                                 seed=seed)
         train_data = data.loc[train_idxs, :]
         test_data = data.loc[test_idxs, :]
 
-        logging.info(f"Split dataset into {train_data.shape[0]} train and {test_data.shape[0]} test data points.")
+        logging.info(f"Split dataset into {train_data.shape[0]} train "+
+        f"and {test_data.shape[0]} test data points.")
 
         X_reactant_train, X_product_train, X_dh_train, Y_train = \
                 preprocess_data(train_data, 
@@ -242,6 +322,15 @@ def load_data_2(data_path: Path,
                                      X_product=X_product_test,
                                      Y=Y_test,
                                      delta_h=X_dh_test)
+
+        # appending "excess" number of points to train data, 
+        # so that the size of the test dataset remains unchanged
+        # from its original size
+        half_size = int(X_test.shape[0]/2)
+        X_train = np.vstack([X_train, X_test[:half_size]])
+        Y_train = np.hstack([Y_train, Y_test[:half_size]])
+        X_test = X_test[half_size:]
+        Y_test = Y_test[half_size:]
 
         # compress to npz
         data_to_compress = [X_train, Y_train, X_test, Y_test]

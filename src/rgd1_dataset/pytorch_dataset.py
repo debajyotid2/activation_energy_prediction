@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 import torch
 
+from helpers import dataset
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1])) # enables relative imports
 from helpers import preprocessing, npz_ops
 
@@ -33,21 +35,23 @@ class RGD1(torch.utils.data.Dataset):
         super().__init__()
 
         download_dirpath.resolve().mkdir(exist_ok=True, parents=True)
-
+        download_path = download_dirpath / "RGD1.csv"
+        if not download_path.exists():
+            self._download(self._url, download_path)
+        self._data = self._convert_smiles_to_canonical(
+                            pd.read_csv(download_path))
+ 
         self._X, self._Y = self._load_compressed_dataset(download_dirpath)
         if all([self._X is None, self._Y is None]):
-            download_path = download_dirpath / "RGD1.csv"
-            
-            if not download_path.exists():
-                self._download(self._url, download_path)
-            _data = self._convert_smiles_to_canonical(pd.read_csv(download_path))
-            X = self._generate_features(_data["reactant"],
-                                        _data["product"],
-                                        _data["DH"],
+            X = self._generate_features(self._data["reactant"],
+                                        self._data["product"],
+                                        self._data["DH"],
                                         radius,
                                         n_bits)
-            self._compress_dataset(X, _data["DE_F"].values, download_dirpath)
-            self._X, self._Y = self._load_compressed_dataset(download_dirpath)
+            self._compress_dataset(X, self._data["DE_F"].values, 
+                                   download_dirpath)
+            self._X, self._Y = self._load_compressed_dataset(
+                                    download_dirpath)
         
     def _download(self, url: str, download_path: Path) -> None:
         """
@@ -65,6 +69,7 @@ class RGD1(torch.utils.data.Dataset):
         """
         data[["reactant", "product"]] = data[["reactant", "product"]].applymap(preprocessing.convert_to_canonical)
         processed_data = data.drop_duplicates(subset=["reactant", "product"])
+        processed_data.reset_index(drop=True, inplace=True)
         percent_dropped = (data.shape[0] - processed_data.shape[0])/data.shape[0] * 100
         logging.info(f"Dropped data from {percent_dropped:.2f} % reactions.")
         return processed_data
@@ -137,7 +142,54 @@ class RGD1(torch.utils.data.Dataset):
     def __len__(self) -> int:
         return self._X.shape[0]
 
-def load_dataloaders(download_dirpath: Path,
+def load_dataloaders_scaffold_split(
+              download_dirpath: Path,
+              radius: int,
+              n_bits: int, 
+              batch_size: int = 32,
+              val_frac: float = 0.1,
+              test_frac: float = 0.1,
+              num_workers: int = 4) -> \
+            tuple[torch.utils.data.DataLoader,
+                  torch.utils.data.DataLoader,
+                  torch.utils.data.DataLoader]:
+    """
+    Splits the RGD1 dataset into train, validation and test sets,
+    using Murcko scaffolds of reactant molecules, loads them into 
+    respective dataloaders and returns the dataloaders.
+    """
+
+    full_dataset = RGD1(download_dirpath=download_dirpath,
+                   radius=radius,
+                   n_bits=n_bits)
+
+    train_idxs, val_idxs, test_idxs = \
+            dataset.generate_scaffold_split_idxs(
+                                molecules=full_dataset._data["reactant"],
+                                val_frac=val_frac, 
+                                test_frac=test_frac)
+
+
+    train_ds = torch.utils.data.Subset(full_dataset, train_idxs)
+    val_ds = torch.utils.data.Subset(full_dataset, val_idxs)
+    test_ds = torch.utils.data.Subset(full_dataset, test_idxs)
+    
+    train_loader = torch.utils.data.DataLoader(train_ds, 
+                                       batch_size=batch_size, 
+                                       shuffle=True,
+                                       num_workers=num_workers)
+    val_loader = torch.utils.data.DataLoader(val_ds, 
+                                       batch_size=batch_size, 
+                                       shuffle=False,
+                                       num_workers=num_workers)
+    test_loader = torch.utils.data.DataLoader(test_ds, 
+                                       batch_size=batch_size, 
+                                       shuffle=False,
+                                       num_workers=num_workers)
+    return train_loader, val_loader, test_loader
+
+def load_dataloaders_random_split(
+              download_dirpath: Path,
               radius: int,
               n_bits: int, 
               batch_size: int = 32,
@@ -150,7 +202,8 @@ def load_dataloaders(download_dirpath: Path,
                   torch.utils.data.DataLoader]:
     """
     Splits the RGD1 dataset into train, validation and test sets,
-    loads them into respective dataloaders and returns the dataloaders.
+    using a random splitting strategy, loads them into respective 
+    dataloaders and returns the dataloaders.
     """
     train_frac = 1-(val_frac+test_frac)
 
@@ -170,7 +223,7 @@ def load_dataloaders(download_dirpath: Path,
                                        batch_size=batch_size, 
                                        shuffle=False,
                                        num_workers=num_workers)
-    test_loader = torch.utils.data.DataLoader(val_ds, 
+    test_loader = torch.utils.data.DataLoader(test_ds, 
                                        batch_size=batch_size, 
                                        shuffle=False,
                                        num_workers=num_workers)
