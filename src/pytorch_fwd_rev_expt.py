@@ -62,7 +62,7 @@ def main() -> None:
     start_time = time.perf_counter()
     logging.info("Loading data...")
     train_loader, val_loader, test_loader = \
-            pytorch_dataset.load_dataloaders_scaffold_split(
+            pytorch_dataset.load_dataloaders_random_split(
                             data_dirpath=data_dir,
                             radius=RADIUS,
                             n_bits=N_BITS,
@@ -71,6 +71,8 @@ def main() -> None:
                             test_frac=TEST_FRAC,
                             num_workers=NUM_WORKERS,
                             dataset_frac=dataset_frac,
+                            loading_func=grambow.load_data_random_split_1,
+                            seed=SEED
                         )
     logging.info(f"Loaded data in {time.perf_counter()-start_time:.3f} seconds.")
 

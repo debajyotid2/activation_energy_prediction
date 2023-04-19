@@ -33,7 +33,7 @@ def main() -> None:
 
     # load data
     X_train, Y_train, X_test, Y_test = \
-            grambow.load_data_1(data_path=data_path,
+            grambow.load_data_random_split_1(data_path=data_path,
                                 radius=RADIUS,
                                 test_frac=TEST_FRAC,
                                 n_bits=N_BITS)

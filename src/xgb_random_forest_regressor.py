@@ -22,6 +22,7 @@ logging.basicConfig(
 SEED = 42
 
 TEST_FRAC = 0.2
+VAL_FRAC = 0.1
 
 RADIUS = 5
 N_BITS = 1024
@@ -34,11 +35,20 @@ def main() -> None:
     data_path = Path(DATA_PATH)
 
     # load data
-    X_train, Y_train, X_test, Y_test = \
-            grambow.load_data_2(data_path=data_path,
+    # X_train, Y_train, X_test, Y_test = \
+    #         grambow.load_data_random_split_2(data_path=data_path,
+    #                             radius=RADIUS,
+    #                             test_frac=TEST_FRAC,
+    #                             n_bits=N_BITS)
+    X_train, Y_train, X_val, Y_val, X_test, Y_test = \
+            grambow.load_data_scaffold_split(
+                                data_path=data_path,
                                 radius=RADIUS,
+                                val_frac=VAL_FRAC,
                                 test_frac=TEST_FRAC,
                                 n_bits=N_BITS)
+    X_train = np.vstack([X_train, X_val])
+    Y_train = np.hstack([Y_train, Y_val])
 
     # training
     logging.info("Starting training...")
@@ -53,8 +63,10 @@ def main() -> None:
 
     Y_pred = model.predict(X_test)
     mae_test = np.mean(np.abs(Y_pred-Y_test), axis=0)
+    mse_test = np.mean((Y_pred-Y_test)**2, axis=0)
 
     logging.info(f"Test MAE = {mae_test:.4f} kcal/mol")
+    logging.info(f"Test MSE = {mse_test:.4f} kcal/mol")
 
 if __name__ == "__main__":
     main()

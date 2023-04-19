@@ -323,15 +323,6 @@ def load_data_random_split_2(
                                      Y=Y_test,
                                      delta_h=X_dh_test)
 
-        # appending "excess" number of points to train data, 
-        # so that the size of the test dataset remains unchanged
-        # from its original size
-        half_size = int(X_test.shape[0]/2)
-        X_train = np.vstack([X_train, X_test[:half_size]])
-        Y_train = np.hstack([Y_train, Y_test[:half_size]])
-        X_test = X_test[half_size:]
-        Y_test = Y_test[half_size:]
-
         # compress to npz
         data_to_compress = [X_train, Y_train, X_test, Y_test]
 
