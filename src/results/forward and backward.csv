@@ -1,0 +1,9 @@
+Regressor,Test MSE,Test MAE,Test R^2
+MLP,292.91,12.90,0.6757
+Linear,395.16,16.04,0.5561
+Ridge,395.16,16.04,0.5561
+Lasso,395.16,16.04,0.5561
+Random forest,219.24,10.54,0.7537
+Gradient boosted random forest,233.28,11.34,0.7379
+SVR,377.96,15.00,0.5754
+

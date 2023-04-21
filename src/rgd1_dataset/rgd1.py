@@ -78,7 +78,7 @@ def _load_compressed_dataset(compressed_data_dirpath: Path) \
 
     return X.astype(np.float32), Y.astype(np.float32)
 
-def load_data(data_path: Path,
+def load_data_random_split(data_path: Path,
               radius: int = 5,
               n_bits: int = 1024,
               test_frac: float = 0.2,

@@ -17,7 +17,8 @@ class MLPRegressor(pl.LightningModule):
                  loss_function: Any,
                  num_layers: int = 2,
                  num_nodes_per_layer: int = 200,
-                 learning_rate: float = 0.001):
+                 learning_rate: float = 0.001,
+                 dropout_prob: float=0.0):
         super().__init__()
         self.save_hyperparameters(ignore=["loss_function"])
         
@@ -30,6 +31,8 @@ class MLPRegressor(pl.LightningModule):
         bottom = [torch.nn.Linear(num_nodes_per_layer, 1)]
         middle.extend(bottom)
         top.extend(middle)
+        if dropout_prob > 0.0:
+            top.extend([torch.nn.Dropout(p=dropout_prob)])
         self.model = torch.nn.Sequential(*top)
 
         self.loss = loss_function
