@@ -10,7 +10,7 @@ RESULTS_FILES = ["results/forward only.csv",
                  "results/scaffold.csv"]
 
 def main():
-    plt.rcParams["font.size"] = 14
+    plt.rcParams["font.size"] = 18
 
     colnames = ["Test MAE", "Test MSE", "Test R^2"]
     ylabels = ["Test MAE (kcal/mol)",
