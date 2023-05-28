@@ -1,5 +1,0 @@
-dropout: true
-learning_rate: 0.001
-num_input_nodes: 1025
-num_layers: 2
-num_nodes_per_layer: 200

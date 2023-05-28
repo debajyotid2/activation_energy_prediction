@@ -1,0 +1,23 @@
+defaults:
+  - common_args: grambow
+  - _self_
+
+model_choice_args:
+  model: linear regression
+
+dataloader_args:
+  seed: 42
+  val_frac: 0.1
+  test_frac: 0.2
+  radius: 5
+  n_bits: 1024
+
+mlp_reg_args:
+  layer_size: 200
+  learning_rate: 0.001
+  max_iter: 100
+  n_iter_no_change: 10
+  tol: 0.000001
+
+randomforestreg_args:
+  num_estimators: 200

@@ -1,7 +1,7 @@
 """
 RGD1 dataset based on SMILES and Morgan fingerprints.
 """
-
+import logging
 from typing import Any, Optional
 from pathlib import Path
 
@@ -79,10 +79,11 @@ def _load_compressed_dataset(compressed_data_dirpath: Path) \
     return X.astype(np.float32), Y.astype(np.float32)
 
 def load_data_random_split(data_path: Path,
-              radius: int = 5,
-              n_bits: int = 1024,
-              test_frac: float = 0.2,
-              seed: int = 42)\
+              radius: int,
+              n_bits: int,
+              test_frac: float,
+              seed: int,
+              data_url: str)\
             -> tuple[np.ndarray[Any, Any],
                      np.ndarray[Any, Any],
                      np.ndarray[Any, Any],
@@ -99,7 +100,10 @@ def load_data_random_split(data_path: Path,
                         np.arange(X.shape[0]), test_frac, seed)
         return X[train_idxs], Y[train_idxs], X[test_idxs], Y[test_idxs]
 
-    data = _convert_smiles_to_canonical(pd.read_csv(data_path))
+    if not data_path.exists():
+        data_path.parent.mkdir(exist_ok=True)
+        dataset.download_data(data_url, data_path.parent, data_path.name)
+    _data = _convert_smiles_to_canonical(pd.read_csv(data_path))
     X = _generate_features(_data["reactant"],
                            _data["product"],
                            _data["DH"],
@@ -110,3 +114,47 @@ def load_data_random_split(data_path: Path,
     train_idxs, test_idxs = dataset.generate_train_test_split_idxs(
                         np.arange(X.shape[0]), test_frac, seed)
     return X[train_idxs], Y[train_idxs], X[test_idxs], Y[test_idxs]
+
+
+def load_data_scaffold_split(
+              data_path: Path, 
+              radius: int,
+              n_bits: int,
+              val_frac: float,
+              test_frac: float,
+              data_url: str)\
+       -> tuple[np.ndarray[Any, Any],
+                np.ndarray[Any, Any],
+                np.ndarray[Any, Any],
+                np.ndarray[Any, Any],
+                np.ndarray[Any, Any],
+                np.ndarray[Any, Any]]:
+    """
+    Splits the RGD1 dataset into train, validation and test sets,
+    using Murcko scaffolds of reactant molecules.
+    """
+    X, Y = _load_compressed_dataset(data_path.parent)
+
+    if X is not None and Y is not None:
+        train_idxs, val_idxs, test_idxs = dataset.generate_scaffold_split_idxs(
+                                    molecules=data["reactants"], 
+                                    val_frac=val_frac, 
+                                    test_frac=test_frac)
+        return X[train_idxs], Y[train_idxs], X[val_idxs], Y[val_idxs],\
+                        X[test_idxs], Y[test_idxs]
+    
+    if not data_path.exists():
+        data_path.parent.mkdir(exist_ok=True)
+        dataset.download_data(data_url, data_path.parent, data_path.name)
+    data = _convert_smiles_to_canonical(pd.read_csv(data_path))
+    
+    X = _generate_features(data["reactant"],
+                           data["product"],
+                           data["DH"],
+                           radius,
+                           n_bits)
+    _compress_dataset(X, _data["DE_F"].values, data_path.parent)
+    X, Y = _load_compressed_dataset(data_path.parent)
+        
+    return X[train_idxs], Y[train_idxs], X[test_idxs], Y[test_idxs]
+

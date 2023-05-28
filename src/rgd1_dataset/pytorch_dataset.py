@@ -20,8 +20,6 @@ logging.basicConfig(format="%(asctime)s-%(level)s: %(message)s",
                     level=logging.DEBUG)
 
 class RGD1(torch.utils.data.Dataset):
-    _url = "https://figshare.com/ndownloader/files/38170326"
-
     """
     Custom PyTorch dataset for the RGD1 reaction dataset. 
     Original dataset authored by Qiyuan Zhao, Brett Savoie, 
@@ -30,6 +28,7 @@ class RGD1(torch.utils.data.Dataset):
     """
     def __init__(self, 
                  download_dirpath: Path,
+                 download_url: str,
                  radius: int,
                  n_bits: int):
         super().__init__()
@@ -37,7 +36,7 @@ class RGD1(torch.utils.data.Dataset):
         download_dirpath.resolve().mkdir(exist_ok=True, parents=True)
         download_path = download_dirpath / "RGD1.csv"
         if not download_path.exists():
-            self._download(self._url, download_path)
+            self._download(download_url, download_path)
         self._data = self._convert_smiles_to_canonical(
                             pd.read_csv(download_path))
  
@@ -146,10 +145,11 @@ def load_dataloaders_scaffold_split(
               download_dirpath: Path,
               radius: int,
               n_bits: int, 
-              batch_size: int = 32,
-              val_frac: float = 0.1,
-              test_frac: float = 0.1,
-              num_workers: int = 4) -> \
+              batch_size: int,
+              val_frac: float,
+              test_frac: float,
+              num_workers: int,
+              data_url: str) -> \
             tuple[torch.utils.data.DataLoader,
                   torch.utils.data.DataLoader,
                   torch.utils.data.DataLoader]:
@@ -160,15 +160,15 @@ def load_dataloaders_scaffold_split(
     """
 
     full_dataset = RGD1(download_dirpath=download_dirpath,
-                   radius=radius,
-                   n_bits=n_bits)
+                        download_url=data_url,
+                        radius=radius,
+                        n_bits=n_bits)
 
     train_idxs, val_idxs, test_idxs = \
             dataset.generate_scaffold_split_idxs(
                                 molecules=full_dataset._data["reactant"],
                                 val_frac=val_frac, 
                                 test_frac=test_frac)
-
 
     train_ds = torch.utils.data.Subset(full_dataset, train_idxs)
     val_ds = torch.utils.data.Subset(full_dataset, val_idxs)
@@ -192,11 +192,12 @@ def load_dataloaders_random_split(
               download_dirpath: Path,
               radius: int,
               n_bits: int, 
-              batch_size: int = 32,
-              val_frac: float = 0.1,
-              test_frac: float = 0.1,
-              num_workers: int = 4,
-              seed: int = 42) -> \
+              batch_size: int,
+              val_frac: float,
+              test_frac: float,
+              num_workers: int,
+              seed: int,
+              data_url: str) -> \
             tuple[torch.utils.data.DataLoader,
                   torch.utils.data.DataLoader,
                   torch.utils.data.DataLoader]:
@@ -208,6 +209,7 @@ def load_dataloaders_random_split(
     train_frac = 1-(val_frac+test_frac)
 
     dataset = RGD1(download_dirpath=download_dirpath,
+                   download_url=data_url,
                    radius=radius,
                    n_bits=n_bits)
 

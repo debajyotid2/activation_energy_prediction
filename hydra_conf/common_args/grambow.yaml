@@ -1,0 +1,4 @@
+dataset: grambow
+split: random
+data_path: ${hydra:runtime.cwd}/../data/b97d3.csv
+data_url: https://zenodo.org/record/3715478/files/b97d3.csv?download=1

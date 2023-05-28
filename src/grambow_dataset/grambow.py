@@ -99,8 +99,9 @@ def load_data_scaffold_split(
               data_path: Path, 
               radius: int,
               n_bits: int,
-              val_frac: float = 0.1,
-              test_frac: float = 0.2)\
+              val_frac: float,
+              test_frac: float,
+              data_url: str)\
        -> tuple[np.ndarray[Any, Any],
                 np.ndarray[Any, Any],
                 np.ndarray[Any, Any],
@@ -129,6 +130,9 @@ def load_data_scaffold_split(
                              compressed_test_targets_path]
 
     if not all([path.exists() for path in compressed_data_paths]):
+        if not data_path.exists():
+            data_path.parent.mkdir(exist_ok=True)
+            dataset.download_data(data_url, data_path.parent, data_path.name)
         data = pd.read_csv(data_path, index_col="idx")
         logging.info(f"Read in data from {data_path}.")
 
@@ -185,87 +189,13 @@ def load_data_scaffold_split(
                         compressed_data_paths))
     return X_train, Y_train, X_val, Y_val, X_test, Y_test
 
-def load_data_random_split_1(
+def load_data_random_split(
               data_path: Path, 
               radius: int,
               n_bits: int,
-              test_frac: float = 0.2,
-              seed: int = 42)\
-       -> tuple[np.ndarray[Any, Any],
-                np.ndarray[Any, Any],
-                np.ndarray[Any, Any],
-                np.ndarray[Any, Any]]:
-    """
-    Load and preprocess training and test data from the Grambow dataset.
-    This function generates training data that has both forward and 
-    backward reactions, while the test data has only forward reactions.
-    """
-
-    compressed_train_features_path =  data_path.parent / "compressed" / "b97d3_X_train.npz"
-    compressed_train_targets_path = data_path.parent / "compressed" / "b97d3_Y_train.npz"
-    compressed_test_features_path = data_path.parent / "compressed" / "b97d3_X_test.npz"
-    compressed_test_targets_path = data_path.parent / "compressed" / "b97d3_Y_test.npz"
-
-    compressed_data_paths = [compressed_train_features_path,
-                             compressed_train_targets_path,
-                             compressed_test_features_path,
-                             compressed_test_targets_path]
-
-    if not all([path.exists() for path in compressed_data_paths]):
-        data = pd.read_csv(data_path, index_col="idx")
-        logging.info(f"Read in data from {data_path}.")
-
-        train_idxs, test_idxs = dataset.generate_train_test_split_idxs(
-                                data.index.values, 
-                                test_frac=test_frac,
-                                seed=seed)
-        train_data = data.loc[train_idxs, :]
-        test_data = data.loc[test_idxs, :]
-
-        logging.info(f"Split dataset into {train_data.shape[0]} train"+
-        f" and {test_data.shape[0]} test data points.")
-
-        X_reactant_train, X_product_train, X_dh_train, Y_train = \
-                preprocess_data(train_data, 
-                                radius=radius,
-                                n_bits=n_bits)
-        X_reactant_test, X_product_test, X_dh_test, Y_test = \
-                preprocess_data(test_data, 
-                                radius=radius,
-                                n_bits=n_bits)
-
-        # generating data for reverse reactions for train data
-        X_train, Y_train = generate_reverse_rxn_data(
-                                     X_reactant=X_reactant_train,
-                                     X_product=X_product_train,
-                                     Y=Y_train,
-                                     delta_h=X_dh_train)
-
-        # generating input features for test data
-        # from canonical SMILES without reverse reaction data
-        X_test = X_product_test - X_reactant_test
-        delta_h_test = X_dh_test.values.reshape(-1, 1)
-        X_test = np.hstack([X_test, delta_h_test])
-
-        # compress to npz
-        data_to_compress = [X_train, Y_train, X_test, Y_test]
-
-        # create compressed data dir if it does not exist
-        compressed_data_paths[0].parent.mkdir(exist_ok=True, parents=True)
-
-        for data, path in zip(data_to_compress, compressed_data_paths):
-            npz_ops.compress_to_npz(data, path)
-
-    X_train, Y_train, X_test, Y_test = list(map(npz_ops.load_from_npz, 
-                                                compressed_data_paths))
-    return X_train, Y_train, X_test, Y_test
-
-def load_data_random_split_2(
-              data_path: Path, 
-              radius: int,
-              n_bits: int,
-              test_frac: float = 0.2,
-              seed: int = 42)\
+              test_frac: float,
+              seed: int,
+              data_url: str)\
        -> tuple[np.ndarray[Any, Any],
                 np.ndarray[Any, Any],
                 np.ndarray[Any, Any],
@@ -287,6 +217,10 @@ def load_data_random_split_2(
                              compressed_test_targets_path]
 
     if not all([path.exists() for path in compressed_data_paths]):
+        if not data_path.exists():
+            data_path.parent.mkdir(exist_ok=True)
+            dataset.download_data(data_url, data_path.parent, data_path.name)
+
         data = pd.read_csv(data_path, index_col="idx")
         logging.info(f"Read in data from {data_path}.")
 

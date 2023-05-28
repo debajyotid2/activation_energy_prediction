@@ -1,0 +1,18 @@
+defaults:
+  - common_args: grambow
+  - _self_
+
+dataloader_args:
+  seed: 42
+  radius: 5
+  n_bits: 1024
+  val_frac: 0.1
+  test_frac: 0.2
+  batch_size: 32
+  num_workers: 1
+
+mlpreg_args:
+  num_layers: 2
+  num_nodes_per_layer: 200
+  learning_rate: 0.001
+  epochs: 100

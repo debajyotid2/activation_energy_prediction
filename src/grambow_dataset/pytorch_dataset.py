@@ -5,19 +5,13 @@ import os
 import logging
 
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 import torch
 
-from . import download, grambow
+from . import grambow
 from helpers import dataset
-
-LoadingFunc = Callable[[Path, int, int, float, int],\
-                        tuple[np.ndarray[Any, Any],
-                              np.ndarray[Any, Any],
-                              np.ndarray[Any, Any],
-                              np.ndarray[Any, Any]]]
 
 logging.basicConfig(format="%(asctime)s-%(levelname)s: %(message)s",
                     level=logging.DEBUG)
@@ -51,11 +45,11 @@ def load_dataloaders_scaffold_split(
                    data_dirpath: Path,
                    radius: int,
                    n_bits: int,
-                   batch_size: int = 32,
-                   val_frac: float = 0.1,
-                   test_frac: float = 0.2,
-                   num_workers: int = 4,
-                   dataset_frac: float = 1.0) \
+                   batch_size: int,
+                   val_frac: float,
+                   test_frac: float,
+                   num_workers: int,
+                   data_url: str) \
                   -> tuple[torch.utils.data.DataLoader,
                            torch.utils.data.DataLoader,
                            torch.utils.data.DataLoader]:
@@ -67,7 +61,7 @@ def load_dataloaders_scaffold_split(
     num_workers = os.cpu_count()-1 if not num_workers else num_workers
     
     data_dirpath.mkdir(exist_ok=True, parents=True)
-    download.download_data(URL, data_dirpath)
+    download_data(data_url, data_dirpath, "b97d3.csv")
     csvpath = data_dirpath / "b97d3.csv"
     X_train, Y_train, X_val, Y_val, X_test, Y_test = \
             grambow.load_data_scaffold_split(
@@ -75,14 +69,8 @@ def load_dataloaders_scaffold_split(
                                           radius=radius,
                                           n_bits=n_bits,
                                           val_frac=val_frac,
-                                          test_frac=test_frac)
-
-    X_train = X_train[:int(dataset_frac*X_train.shape[0])]
-    Y_train = Y_train[:int(dataset_frac*Y_train.shape[0])]
-    X_val = X_val[:int(dataset_frac*X_val.shape[0])]
-    Y_val = Y_val[:int(dataset_frac*Y_val.shape[0])]
-    X_test = X_test[:int(dataset_frac*X_test.shape[0])]
-    Y_test = Y_test[:int(dataset_frac*Y_test.shape[0])]
+                                          test_frac=test_frac,
+                                          data_url=data_url)
 
     train_ds = GrambowDataset(X_train, Y_train)
     val_ds = GrambowDataset(X_val, Y_val)
@@ -110,14 +98,12 @@ def load_dataloaders_random_split(
                    data_dirpath: Path,
                    radius: int,
                    n_bits: int,
-                   batch_size: int = 32,
-                   val_frac: float = 0.1,
-                   test_frac: float = 0.2,
-                   num_workers: int = 4,
-                   dataset_frac: float = 1.0,
-                   loading_func: LoadingFunc = \
-                           grambow.load_data_random_split_1,
-                   seed: int = 42) \
+                   batch_size: int,
+                   val_frac: float,
+                   test_frac: float,
+                   num_workers: int,
+                   seed: int,
+                   data_url: str) \
                   -> tuple[torch.utils.data.DataLoader,
                            torch.utils.data.DataLoader,
                            torch.utils.data.DataLoader]:
@@ -130,19 +116,15 @@ def load_dataloaders_random_split(
     num_workers = os.cpu_count()-1 if not num_workers else num_workers
     
     data_dirpath.mkdir(exist_ok=True, parents=True)
-    download.download_data(URL, data_dirpath)
+    dataset.download_data(data_url, data_dirpath, "b97d3.csv")
     csvpath = data_dirpath / "b97d3.csv"
-    X_train, Y_train, X_test, Y_test = loading_func(
+    X_train, Y_train, X_test, Y_test = grambow.load_data_random_split(
                                           data_path=csvpath,
                                           radius=radius,
                                           n_bits=n_bits,
                                           test_frac=test_frac,
-                                          seed=seed)
-
-    X_train = X_train[:int(dataset_frac*X_train.shape[0])]
-    Y_train = Y_train[:int(dataset_frac*Y_train.shape[0])]
-    X_test = X_test[:int(dataset_frac*X_test.shape[0])]
-    Y_test = Y_test[:int(dataset_frac*Y_test.shape[0])]
+                                          seed=seed,
+                                          data_url=data_url)
 
     train_ds = GrambowDataset(X_train, Y_train)
     test_ds = GrambowDataset(X_test, Y_test)

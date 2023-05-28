@@ -1,8 +1,10 @@
 """
 Miscellaneous helper functions for preparing datasets.
 """
+import urllib.request
 import logging
 from typing import Any
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -10,6 +12,19 @@ import rdkit.Chem.Scaffolds.MurckoScaffold
 
 logging.basicConfig(format="%(asctime)s-%(levelname)s: %(message)s",
                     level=logging.DEBUG)
+
+def download_data(url: str, data_dir: Path, filename: str) -> None:
+    """
+    Downloads files from dataset into specified data directory.
+    """
+    filepath = data_dir / filename
+    
+    if not filepath.exists():
+        logging.info(f"Downloading from {url} ...")
+        urllib.request.urlretrieve(url, filepath) 
+        logging.info(f"{filepath} downloaded.")
+    else:
+        logging.warning(f"{filepath} already exists.")
 
 def generate_train_test_split_idxs(idxs: np.ndarray[Any, Any],
                                    test_frac: float,

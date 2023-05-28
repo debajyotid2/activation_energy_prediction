@@ -1,0 +1,5 @@
+dataset: rgd1
+split: random
+data_path: ${hydra:runtime.cwd}/../data/RGD1.csv
+data_url: https://figshare.com/ndownloader/files/38170326 
+
