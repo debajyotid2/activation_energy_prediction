@@ -61,7 +61,7 @@ def load_dataloaders_scaffold_split(
     num_workers = os.cpu_count()-1 if not num_workers else num_workers
     
     data_dirpath.mkdir(exist_ok=True, parents=True)
-    download_data(data_url, data_dirpath, "b97d3.csv")
+    dataset.download_data(data_url, data_dirpath, "b97d3.csv")
     csvpath = data_dirpath / "b97d3.csv"
     X_train, Y_train, X_val, Y_val, X_test, Y_test = \
             grambow.load_data_scaffold_split(

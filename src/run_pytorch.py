@@ -1,6 +1,6 @@
 """
 Workflow for running regression on activation energy prediction
-using Scikit-learn models and Pandas datasets.
+using PyTorch models and dataloaders.
 """
 
 import logging

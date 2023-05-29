@@ -135,6 +135,11 @@ def load_data_scaffold_split(
     """
     X, Y = _load_compressed_dataset(data_path.parent)
 
+    if not data_path.exists():
+        data_path.parent.mkdir(exist_ok=True)
+        dataset.download_data(data_url, data_path.parent, data_path.name)
+    data = _convert_smiles_to_canonical(pd.read_csv(data_path))
+ 
     if X is not None and Y is not None:
         train_idxs, val_idxs, test_idxs = dataset.generate_scaffold_split_idxs(
                                     molecules=data["reactants"], 
@@ -142,18 +147,13 @@ def load_data_scaffold_split(
                                     test_frac=test_frac)
         return X[train_idxs], Y[train_idxs], X[val_idxs], Y[val_idxs],\
                         X[test_idxs], Y[test_idxs]
-    
-    if not data_path.exists():
-        data_path.parent.mkdir(exist_ok=True)
-        dataset.download_data(data_url, data_path.parent, data_path.name)
-    data = _convert_smiles_to_canonical(pd.read_csv(data_path))
-    
+   
     X = _generate_features(data["reactant"],
                            data["product"],
                            data["DH"],
                            radius,
                            n_bits)
-    _compress_dataset(X, _data["DE_F"].values, data_path.parent)
+    _compress_dataset(X, data["DE_F"].values, data_path.parent)
     X, Y = _load_compressed_dataset(data_path.parent)
         
     return X[train_idxs], Y[train_idxs], X[test_idxs], Y[test_idxs]
